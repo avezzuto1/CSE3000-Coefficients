@@ -172,7 +172,7 @@ def get_folder_file_pairs(folder):
 # Main Execution
 if __name__ == "__main__":
     # folders = ['2010', '2011', '2012', '2013', '2014']
-    folders = ['simulated_data_5']
+    folders = ['simulated_data']
     all_jobs = []
     for folder in folders:
         all_jobs.extend(get_folder_file_pairs(folder))
