@@ -55,29 +55,35 @@ def tau_h_weight(i, j, xy_ranks, yx_ranks):
 
 
 # Concordance Functions
-def sign_concordance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
+def sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
     dx = np.sign(rel_xi - rel_xj)
     dy = np.sign(rel_yi - rel_yj)
-    return 1 if dx == dy else -1
+
+    if dx == dy:
+        return 1
+
+    if dx == 0 or dy == 0:
+        return -0.25
+
+    return -1
 
 
 def additive_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
-    dx = np.sign(rel_xi - rel_xj)
-    dy = np.sign(rel_yi - rel_yj)
-    concordance = 1 if dx == dy else -1
+    concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel)
 
     if rel_xi == rel_yi and rel_xj == rel_yj:
         return 1
+    if rel_xi == rel_yj and rel_xj == rel_yi:
+        return -1
+
     coeff = 1 - abs((rel_xi + rel_xj) - (rel_yi + rel_yj)) / (2 * max_rel)
     return 0.9 * concordance * coeff
 
 
-def additive_concordance(rel_i, rel_j, max_rel):
-    return (rel_i + rel_j) / (2 * max_rel)
-
-
-def multiplicative_concordance(rel_i, rel_j, max_rel):
-    return (rel_i * rel_j) / (max_rel ** 2)
+def distance_concordance(rel_i, rel_j, max_rel):
+    if rel_i == 0 and rel_j == 0:
+        return 0
+    return abs(rel_i - rel_j) / max(rel_i, rel_j)
 
 
 # Metric Computation
@@ -85,21 +91,20 @@ def weighted_tau(x, y, rel_x, rel_y, max_rel):
     n = len(rel_x)
     if n < 2:
         print("Returning 0!")
-        return (0.0,) * 15
+        return (0.0,) * 12
 
     xy_ranks = lexicographic_ranking(x, y)
     yx_ranks = lexicographic_ranking(y, x)
 
     # Numerator and denominator pairs for different tau versions
-    metrics = np.zeros((15, 2))
+    metrics = np.zeros((12, 2))
 
     for i in range(n):
         for j in range(i + 1, n):
             concordance = np.sign(x[i] - x[j]) * np.sign(y[i] - y[j])
-            sign_conc = sign_concordance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], max_rel)
+            sign_conc_rel = sign_concordance_relevance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], max_rel)
             additive_conc_rel = additive_concordance_relevance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], max_rel)
-            additive_conc = additive_concordance(rel_x[i], rel_x[j], max_rel)
-            multiplicative_conc = multiplicative_concordance(rel_x[i], rel_x[j], max_rel)
+            distance_conc = distance_concordance(rel_x[i], rel_x[j], max_rel)
 
             tauAP_weight = tau_ap_weight(i, j, x, y)
             tauH_weight = tau_h_weight(i, j, xy_ranks, yx_ranks)
@@ -110,22 +115,19 @@ def weighted_tau(x, y, rel_x, rel_y, max_rel):
 
             entries = [
                 (concordance, 1.0),                              # tau
-                (sign_conc, 1.0),                                # tau_s
-                (additive_conc_rel, 1.0),                        # tau_ar
-                (concordance * additive_conc, additive_conc),   # tau_a
-                (concordance * multiplicative_conc, multiplicative_conc),  # tau_m
+                (sign_conc_rel, 1.0),                                # tau_sc
+                (additive_conc_rel, 1.0),                        # tau_ac
+                (concordance * distance_conc, distance_conc),   # tau_dw
 
                 (concordance * tauAP_weight, tauAP_weight),     # tauAP
-                (sign_conc * tauAP_rel_weight, tauAP_rel_weight),  # tauAP_s
-                (additive_conc_rel * tauAP_rel_weight, tauAP_rel_weight),  # tauAP_ar
-                (concordance * tauAP_weight * additive_conc, tauAP_weight * additive_conc),  # tauAP_a
-                (concordance * tauAP_weight * multiplicative_conc, tauAP_weight * multiplicative_conc),  # tauAP_m
+                (sign_conc_rel * tauAP_rel_weight, tauAP_rel_weight),  # tauAP_ss
+                (additive_conc_rel * tauAP_rel_weight, tauAP_rel_weight),  # tauAP_ac
+                (concordance * tauAP_weight * distance_conc, tauAP_weight * distance_conc),  # tauAP_dw
 
                 (concordance * tauH_weight, tauH_weight),       # tauH
-                (sign_conc * tauH_rel_weight, tauH_rel_weight),  # tauH_s
-                (additive_conc_rel * tauH_rel_weight, tauH_rel_weight),  # tauH_ar
-                (concordance * tauH_weight * additive_conc, tauH_weight * additive_conc),  # tauH_a
-                (concordance * tauH_weight * multiplicative_conc, tauH_weight * multiplicative_conc),  # tauH_m
+                (sign_conc_rel * tauH_rel_weight, tauH_rel_weight),  # tauH_sc
+                (additive_conc_rel * tauH_rel_weight, tauH_rel_weight),  # tauH_ac
+                (concordance * tauH_weight * distance_conc, tauH_weight * distance_conc),  # tauH_dw
             ]
 
             for idx, (num, denom) in enumerate(entries):
@@ -171,7 +173,6 @@ def get_folder_file_pairs(folder):
 
 # Main Execution
 if __name__ == "__main__":
-    # folders = ['2010', '2011', '2012', '2013', '2014']
     folders = ['simulated_data']
     all_jobs = []
     for folder in folders:
@@ -187,7 +188,7 @@ if __name__ == "__main__":
     for folder, metrics in folder_outputs.items():
         output_path = join("output", f"{folder}.csv")
         with open(output_path, 'w') as f:
-            header = 'tau,tau_s,tau_ar,tau_a,tau_m,tauAP,tauAP_s,tauAP_ar,tauAP_a,tauAP_m,tauH,tauH_s,tauH_ar,tauH_a,tauH_m\n'
+            header = 'tau,tau_sc,tau_ac,tau_dw,tauAP,tauAP_sc,tauAP_ac,tauAP_dw,tauH,tauH_sc,tauH_ac,tauH_dw\n'
             f.write(header)
             for row in metrics:
                 f.write(','.join(map(str, row)) + '\n')
