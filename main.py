@@ -63,7 +63,7 @@ def sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
         return 1
 
     if dx == 0 or dy == 0:
-        return -0.25
+        return -1/(2 * max_rel)
 
     return -1
 
