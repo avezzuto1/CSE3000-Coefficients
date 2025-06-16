@@ -149,12 +149,19 @@ def process_file_pair(args):
     results = []
 
     for topic in list(filtered_1.keys()):
+        topic = list(filtered_1.keys())[16]
         print(f"Status update. Topic: {topic}, file 1: {file1}, file 2: {file2}")
         items_1 = [item["doc"] for item in filtered_1[topic]]
         items_2 = [item["doc"] for item in filtered_2[topic]]
 
+        print(items_1)
+        print(items_2)
+
         rel_1 = [item["rel"] for item in filtered_1[topic]]
         rel_2 = [item["rel"] for item in filtered_2[topic]]
+
+        print(rel_1)
+        print(rel_2)
 
         index_map_1 = {doc: i for i, doc in enumerate(items_1, start=1)}
         index_map_2 = {doc: i for i, doc in enumerate(items_2, start=1)}
@@ -162,6 +169,13 @@ def process_file_pair(args):
         sorted_Y = [index_map_2[doc] for doc in items_1]
 
         results.append(weighted_tau(sorted_X, sorted_Y, rel_1, rel_2, max_rel))
+
+        if results[-1][1] == -1 and results[-1][0] != -1:
+            raise ValueError(
+                f"Invalid result (tau_sc = -1 but tau != -1). "
+                f"Topic: {topic}, file1: {file1}, file2: {file2}"
+            )
+
     return results
 
 
@@ -173,22 +187,27 @@ def get_folder_file_pairs(folder):
 
 # Main Execution
 if __name__ == "__main__":
-    folders = ['simulated_data']
-    all_jobs = []
-    for folder in folders:
-        all_jobs.extend(get_folder_file_pairs(folder))
+    # folders = ['2010']
+    # all_jobs = []
+    # for folder in folders:
+    #     all_jobs.extend(get_folder_file_pairs(folder))
 
-    with mp.Pool() as pool:
-        results = pool.map(process_file_pair, all_jobs)
+    f1 = 'THUIR10Str.csv'
+    f2 = 'uogTrA40n.csv'
 
-    folder_outputs = {}
-    for (folder, file1, file2), pair_result in zip(all_jobs, results):
-        folder_outputs.setdefault(folder, []).extend(pair_result)
+    results = process_file_pair(('2010', f1, f2))
 
-    for folder, metrics in folder_outputs.items():
-        output_path = join("output", f"{folder}.csv")
-        with open(output_path, 'w') as f:
-            header = 'tau,tau_sc,tau_ac,tau_dw,tauAP,tauAP_sc,tauAP_ac,tauAP_dw,tauH,tauH_sc,tauH_ac,tauH_dw\n'
-            f.write(header)
-            for row in metrics:
-                f.write(','.join(map(str, row)) + '\n')
+    # with mp.Pool() as pool:
+    #     results = pool.map(process_file_pair, all_jobs)
+
+    # folder_outputs = {}
+    # for (folder, file1, file2), pair_result in zip(all_jobs, results):
+    #     folder_outputs.setdefault(folder, []).extend(pair_result)
+    #
+    # for folder, metrics in folder_outputs.items():
+    #     output_path = join("output", f"{folder}_(2).csv")
+    #     with open(output_path, 'w') as f:
+    #         header = 'tau,tau_sc,tau_ac,tau_dw,tauAP,tauAP_sc,tauAP_ac,tauAP_dw,tauH,tauH_sc,tauH_ac,tauH_dw\n'
+    #         f.write(header)
+    #         for row in metrics:
+    #             f.write(','.join(map(str, row)) + '\n')
