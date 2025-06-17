@@ -68,16 +68,20 @@ def sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
     return -1
 
 
-def additive_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
-    concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel)
-
+def additive_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, rel_xni, rel_xnj, rel_yni, rel_ynj, max_rel):
     if rel_xi == rel_yi and rel_xj == rel_yj:
         return 1
-    if rel_xi == rel_yj and rel_xj == rel_yi:
+    if rel_xi == rel_yni and rel_xj == rel_ynj:
         return -1
 
-    coeff = 1 - abs((rel_xi + rel_xj) - (rel_yi + rel_yj)) / (2 * max_rel)
-    return 0.9 * concordance * coeff
+    if rel_yi == rel_xni and rel_yj == rel_xnj:
+        concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yni, rel_ynj, max_rel)
+        coeff = 1 - abs((rel_xi + rel_xj) - (rel_yni + rel_ynj)) / (2 * max_rel)
+    else:
+        concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel)
+        coeff = 1 - abs((rel_xi + rel_xj) - (rel_yi + rel_yj)) / (2 * max_rel)
+
+    return concordance * coeff
 
 
 def distance_concordance(rel_i, rel_j, max_rel):
@@ -103,7 +107,7 @@ def weighted_tau(x, y, rel_x, rel_y, max_rel):
         for j in range(i + 1, n):
             concordance = np.sign(x[i] - x[j]) * np.sign(y[i] - y[j])
             sign_conc_rel = sign_concordance_relevance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], max_rel)
-            additive_conc_rel = additive_concordance_relevance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], max_rel)
+            additive_conc_rel = additive_concordance_relevance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], rel_x[n-1-i], rel_x[n-1-j], rel_y[n-1-i], rel_y[n-1-j], max_rel)
             distance_conc = distance_concordance(rel_x[i], rel_x[j], max_rel)
 
             tauAP_weight = tau_ap_weight(i, j, x, y)
@@ -149,19 +153,12 @@ def process_file_pair(args):
     results = []
 
     for topic in list(filtered_1.keys()):
-        topic = list(filtered_1.keys())[16]
         print(f"Status update. Topic: {topic}, file 1: {file1}, file 2: {file2}")
         items_1 = [item["doc"] for item in filtered_1[topic]]
         items_2 = [item["doc"] for item in filtered_2[topic]]
 
-        print(items_1)
-        print(items_2)
-
         rel_1 = [item["rel"] for item in filtered_1[topic]]
         rel_2 = [item["rel"] for item in filtered_2[topic]]
-
-        print(rel_1)
-        print(rel_2)
 
         index_map_1 = {doc: i for i, doc in enumerate(items_1, start=1)}
         index_map_2 = {doc: i for i, doc in enumerate(items_2, start=1)}
@@ -169,12 +166,6 @@ def process_file_pair(args):
         sorted_Y = [index_map_2[doc] for doc in items_1]
 
         results.append(weighted_tau(sorted_X, sorted_Y, rel_1, rel_2, max_rel))
-
-        if results[-1][1] == -1 and results[-1][0] != -1:
-            raise ValueError(
-                f"Invalid result (tau_sc = -1 but tau != -1). "
-                f"Topic: {topic}, file1: {file1}, file2: {file2}"
-            )
 
     return results
 
@@ -187,27 +178,22 @@ def get_folder_file_pairs(folder):
 
 # Main Execution
 if __name__ == "__main__":
-    # folders = ['2010']
-    # all_jobs = []
-    # for folder in folders:
-    #     all_jobs.extend(get_folder_file_pairs(folder))
+    folders = ['simulated_data']
+    all_jobs = []
+    for folder in folders:
+        all_jobs.extend(get_folder_file_pairs(folder))
 
-    f1 = 'THUIR10Str.csv'
-    f2 = 'uogTrA40n.csv'
+    with mp.Pool() as pool:
+        results = pool.map(process_file_pair, all_jobs)
 
-    results = process_file_pair(('2010', f1, f2))
+    folder_outputs = {}
+    for (folder, file1, file2), pair_result in zip(all_jobs, results):
+        folder_outputs.setdefault(folder, []).extend(pair_result)
 
-    # with mp.Pool() as pool:
-    #     results = pool.map(process_file_pair, all_jobs)
-
-    # folder_outputs = {}
-    # for (folder, file1, file2), pair_result in zip(all_jobs, results):
-    #     folder_outputs.setdefault(folder, []).extend(pair_result)
-    #
-    # for folder, metrics in folder_outputs.items():
-    #     output_path = join("output", f"{folder}_(2).csv")
-    #     with open(output_path, 'w') as f:
-    #         header = 'tau,tau_sc,tau_ac,tau_dw,tauAP,tauAP_sc,tauAP_ac,tauAP_dw,tauH,tauH_sc,tauH_ac,tauH_dw\n'
-    #         f.write(header)
-    #         for row in metrics:
-    #             f.write(','.join(map(str, row)) + '\n')
+    for folder, metrics in folder_outputs.items():
+        output_path = join("output", f"{folder}_(2).csv")
+        with open(output_path, 'w') as f:
+            header = 'tau,tau_sc,tau_ac,tau_dw,tauAP,tauAP_sc,tauAP_ac,tauAP_dw,tauH,tauH_sc,tauH_ac,tauH_dw\n'
+            f.write(header)
+            for row in metrics:
+                f.write(','.join(map(str, row)) + '\n')
