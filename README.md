@@ -6,9 +6,8 @@ This repository accompanies the thesis paper for the CSE3000 Research Project co
 
 - **`main.py`**: Computes $\tau$, $\tau_{ap}$, and $\tau_h$ correlation coefficients between pairs of ranked lists. These are extended to relevance profiles, as outlined in the paper.
 - **`graphs.ipynb`**: Reproduces the plots presented in the thesis paper using the computed coefficients.
-- **`script.sh`**: Shell script to run the simulations on the DelftBlue HPC cluster.
-- **`data/`**: Contains TREC datasets for the 2010 - 2014 ad hoc task in the web track. 
-- **`untied_data/`**: Contains TREC datasets for the 2010 - 2014 ad hoc task in the web track, albeit with tied items (same score) having been randomly broken.
+- **`script.sh`**: Shell script to run the simulations on the DelftBlue HPC cluster. 
+- **`untied_data/`**: Locally contains TREC datasets for the 2010 - 2014 ad hoc task in the web track, albeit with tied items (same score) having been randomly broken using random.shuffle using seed = 42. Also contains data from the simulation algorithms, which do not contain any ties.
 - **`output/`**: Automatically generated directory containing the result CSVs per dataset.
 
 ---
@@ -25,7 +24,7 @@ python main.py
 
  - This will iterate over all folders listed in the folders variable (e.g., simulated_data, 2010, etc.).
 
- - It computes 15 variations of Kendall-style concordance coefficients for each pairwise comparison of ranking files in a topic-wise fashion.
+ - It computes 12 variations of Kendall-style concordance coefficients for each pairwise comparison of ranking files in a topic-wise fashion.
 
  - The results are written as CSV files to the output/ directory.
 
