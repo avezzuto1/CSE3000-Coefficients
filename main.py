@@ -55,7 +55,14 @@ def tau_h_weight(i, j, xy_ranks, yx_ranks):
 
 
 # Concordance Functions
-def sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
+def sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel, a_f = False):
+    if a_f and max_rel == 3:
+        a = -0.7
+    elif a_f and max_rel == 4:
+        a = -0.58
+    else:
+        a = -1 / (2 * max_rel)
+
     dx = np.sign(rel_xi - rel_xj)
     dy = np.sign(rel_yi - rel_yj)
 
@@ -63,22 +70,20 @@ def sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel):
         return 1
 
     if dx == 0 or dy == 0:
-        return -1/(2 * max_rel)
+        return a
 
     return -1
 
 
 def additive_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, rel_xni, rel_xnj, rel_yni, rel_ynj, max_rel):
-    if rel_xi == rel_yi and rel_xj == rel_yj:
-        return 1
-    if rel_xi == rel_yni and rel_xj == rel_ynj:
-        return -1
+    if rel_xi == rel_yi == rel_yni and rel_xj == rel_yj == rel_ynj and (rel_xni != rel_yni or rel_xnj != rel_ynj):
+        return 0
 
-    if rel_yi == rel_xni and rel_yj == rel_xnj:
-        concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yni, rel_ynj, max_rel)
+    if (rel_xi != rel_yi or rel_xj != rel_yj) and ((rel_xi == rel_yni and rel_xj == rel_ynj) or (rel_yi == rel_xni and rel_yj == rel_xnj)):
+        concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yni, rel_ynj, max_rel, a_f=True)
         coeff = 1 - abs((rel_xi + rel_xj) - (rel_yni + rel_ynj)) / (2 * max_rel)
     else:
-        concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel)
+        concordance = sign_concordance_relevance(rel_xi, rel_xj, rel_yi, rel_yj, max_rel, a_f=True)
         coeff = 1 - abs((rel_xi + rel_xj) - (rel_yi + rel_yj)) / (2 * max_rel)
 
     return concordance * coeff
@@ -109,6 +114,9 @@ def weighted_tau(x, y, rel_x, rel_y, max_rel):
             sign_conc_rel = sign_concordance_relevance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], max_rel)
             additive_conc_rel = additive_concordance_relevance(rel_x[i], rel_x[j], rel_y[i], rel_y[j], rel_x[n-1-i], rel_x[n-1-j], rel_y[n-1-i], rel_y[n-1-j], max_rel)
             distance_conc = distance_concordance(rel_x[i], rel_x[j], max_rel)
+
+            if len(set(rel_x)) == 1:
+                distance_conc = 1
 
             tauAP_weight = tau_ap_weight(i, j, x, y)
             tauH_weight = tau_h_weight(i, j, xy_ranks, yx_ranks)
@@ -149,7 +157,8 @@ def process_file_pair(args):
     res_2 = read_file(path(file2))
     filtered_1, filtered_2 = get_common_items(res_1, res_2)
 
-    max_rel = 3 if folder in {'2010', '2011'} or 'simulated_data' in folder else 4
+    max_rel = 3 if folder in {'2010', '2011'} or 'simulated_data' == folder else 4
+
     results = []
 
     for topic in list(filtered_1.keys()):
@@ -191,7 +200,7 @@ if __name__ == "__main__":
         folder_outputs.setdefault(folder, []).extend(pair_result)
 
     for folder, metrics in folder_outputs.items():
-        output_path = join("output", f"{folder}_(2).csv")
+        output_path = join("output", f"{folder}.csv")
         with open(output_path, 'w') as f:
             header = 'tau,tau_sc,tau_ac,tau_dw,tauAP,tauAP_sc,tauAP_ac,tauAP_dw,tauH,tauH_sc,tauH_ac,tauH_dw\n'
             f.write(header)
