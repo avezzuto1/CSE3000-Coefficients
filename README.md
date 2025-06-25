@@ -1,6 +1,6 @@
 # Concordance Coefficient Simulation & Visualization
 
-This repository accompanies the thesis paper for the 2025 CSE3000 Research Project course. It contains code used to compute and analyse various concordance coefficients on ranked retrieval results.
+This repository accompanies the thesis paper for the 2025 CSE3000 TU Delft Research Project course. It contains code used to compute and analyse various concordance coefficients on ranked retrieval results.
 
 ## Overview
 
